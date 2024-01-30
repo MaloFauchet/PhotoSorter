@@ -26,7 +26,16 @@ class Sorter:
         # Directory that contains the images to sort. Default = where the program is
         self.original_img_directory: pathlib.Path = self.get_directory("Where are the images to sort ? ")
         # Directory that will contain the sorted images. Default = where the program is
-        self.new_img_directory: pathlib.Path = self.get_directory("Where do you want the program to put the sorted images ?", False)
+        self.new_img_directory: pathlib.Path = self.get_directory(
+            "Where do you want the program to put the sorted images ?", False)
+        if self.new_img_path == pathlib.Path(""):
+            self.new_img_directory = self.original_img_directory
+        # way of sorting photos
+        # TODO: change its name to more clear one
+        self.sorting_manner: str = input("How would you like to sort the photos ? ")
+        # if none is given, this is the default way
+        if self.sorting_manner == '':
+            self.sorting_manner = "year + s + year + '_' + month + '_' + day"
 
         self.run()
 
@@ -135,8 +144,6 @@ class Sorter:
         except TypeError:
             date = None
 
-        date = None
-
         if date is not None:
             date_list = date.split(":")
             self.date_of_image = datetime(
@@ -148,7 +155,27 @@ class Sorter:
             self.date_of_image = None
 
     def get_new_img_path(self):
+        #
         if self.date_of_image is None:
-
             self.new_img_path = self.new_img_directory.joinpath(pathlib.Path("/Inclassable"))
             print(self.new_img_path.absolute())
+            return
+
+        sorting_array: list = self.sorting_manner.split("+")
+        tmp_str: str = ""  # used to store the temporary directory name
+
+        # TODO: transformer self.date_of_image en dico
+
+        for string in sorting_array:
+            if string.strip == "s":
+                self.new_img_path = self.new_img_path.joinpath(tmp_str)
+                tmp_str = ""
+                continue
+            if string.strip in self.date_of_image:
+                tmp_str += self.date_of_image[string.strip]
+            else:
+                tmp_str += string
+
+        print(self.new_img_path.absolute())
+
+
