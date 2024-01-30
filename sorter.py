@@ -35,7 +35,7 @@ class Sorter:
         self.sorting_manner: str = input("How would you like to sort the photos ? ")
         # if none is given, this is the default way
         if self.sorting_manner == '':
-            self.sorting_manner = "year + s + year + '_' + month + '_' + day"
+            self.sorting_manner = "year+s+year+_+month+_+day"
 
         self.run()
 
@@ -60,7 +60,7 @@ class Sorter:
                     self.current_img_path = file
                     self.get_img_metadata()
                     self.get_new_img_path()
-                    break
+                    self.moving()
 
         # if there wasn't any image
         if not img_counter:
@@ -99,9 +99,7 @@ class Sorter:
         except shutil.Error:  # delete the file if it already exists where you want to move it
             self.delete_image()
 
-    def get_directory(self,
-                      input_str: str,
-                      need_to_exist: bool = True):
+    def get_directory(self, input_str: str, need_to_exist: bool = True):
         """
         The get_directory function asks the user for a directory path to where the images are located.
         If the user didn't specify any path, the path of the program is used
@@ -155,7 +153,7 @@ class Sorter:
             self.date_of_image = None
 
     def get_new_img_path(self):
-        #
+        # if the date wasn't found
         if self.date_of_image is None:
             self.new_img_path = self.new_img_directory.joinpath(pathlib.Path("/Inclassable"))
             print(self.new_img_path.absolute())
@@ -164,18 +162,20 @@ class Sorter:
         sorting_array: list = self.sorting_manner.split("+")
         tmp_str: str = ""  # used to store the temporary directory name
 
-        # TODO: transformer self.date_of_image en dico
+        date = {
+            "year": self.date_of_image.year,
+            "month": self.date_of_image.month,
+            "day": self.date_of_image.day
+        }
+        self.new_img_path = self.new_img_directory
 
         for string in sorting_array:
-            if string.strip == "s":
+            if string.strip() == "s":
                 self.new_img_path = self.new_img_path.joinpath(tmp_str)
                 tmp_str = ""
                 continue
-            if string.strip in self.date_of_image:
-                tmp_str += self.date_of_image[string.strip]
+            if string.strip() in list(date.keys()):
+                tmp_str += str(date[string.strip()])
             else:
                 tmp_str += string
-
-        print(self.new_img_path.absolute())
-
-
+        self.new_img_path = self.new_img_path.joinpath(tmp_str)
