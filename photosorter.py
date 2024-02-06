@@ -186,12 +186,15 @@ class Photosorter(cs.CTk):
             if not path.exists():
                 self.warning()
                 return
-            sorter = Sorter(self)
+            sorter: Sorter = Sorter(self)
             sorter.set_sorting_path(path)
-            sorting_thread = threading.Thread(target=sorter.run)
+            sorting_thread: threading.Thread = threading.Thread(target=sorter.run)
             sorting_thread.start()
-            self.progress_bar = cs.CTkProgressBar(self)
-            self.progress_bar.grid(row=11, pady=20)
+            if sorter.img_number != 0:
+                self.progress_bar = cs.CTkProgressBar(self)
+                self.progress_bar.grid(row=11, pady=20)
+            else:
+                self.warning()
 
     def set_progress_bar(self, progress: float):
         self.progress_bar.set(progress)

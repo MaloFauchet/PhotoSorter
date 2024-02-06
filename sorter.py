@@ -2,7 +2,6 @@ import os  # used to remove files
 
 import pathlib  # used to manage paths
 import shutil  # used to move files
-import threading
 from datetime import datetime
 
 import PIL.Image  # used to get metadata
@@ -73,7 +72,8 @@ class Sorter:
 
         # if there wasn't any image
         if not self.img_counter:
-            print("\nERROR, the first given path does not contain any image.")
+            if not self.app.warning_is_displayed:
+                self.app.warning()
 
     @staticmethod
     def mkdir(path_to_create: pathlib.Path) -> None:
@@ -88,8 +88,6 @@ class Sorter:
     def delete_image(self) -> None:
         """
         The delete function removes the specified image from the directory.
-
-        :return: Nothing
         """
         os.remove(self.current_img_path)
 
@@ -98,8 +96,6 @@ class Sorter:
         The moving function moves a file to a new location.
         It takes two arguments: the file to move and the path where it will be moved.
         The function creates any necessary directories in order for the file to be moved there using another function.
-
-        :return: Nothing
         """
         self.mkdir(self.new_img_path)
         try:
@@ -107,32 +103,10 @@ class Sorter:
         except shutil.Error:  # delete the file if it already exists where you want to move it
             self.delete_image()
 
-    def get_directory(self, input_str: str, need_to_exist: bool = True) -> pathlib.Path:
-        """
-        The get_directory function asks the user for a directory path to where the images are located.
-        If the user didn't specify any path, the path of the program is used
-        directory_var must already have a default path
-
-        :param: input_str the string to put in the input method
-        :param: need_to_exist Does the path needs to exist or will it be created
-        :return: the path
-        """
-        result_to_return: pathlib.Path = pathlib.Path("./")
-        tmp_input: str = input(input_str)
-
-        if tmp_input:
-            result_to_return = pathlib.Path(tmp_input)
-
-        # test the path
-        if need_to_exist and not result_to_return.exists():
-            print(f"\nERROR, the specified path does not exists.\nSpecified path : \"{tmp_input}\"")
-            exit(0)
-        elif not need_to_exist and not result_to_return.exists():
-            self.mkdir(result_to_return)
-
-        return result_to_return
-
     def get_img_metadata(self) -> None:
+        """
+        Retrieve the metadata of the image and save it into self.date_of_image to be used later
+        """
         current_image: PIL.Image = PIL.Image.open(self.current_img_path)
         current_image_metadata: PIL.Image.Exif = current_image.getexif()
 
@@ -150,6 +124,7 @@ class Sorter:
         except TypeError:
             date = None
 
+        # if a date was found
         if date is not None:
             date_list = date.split(":")
             self.date_of_image = datetime(
@@ -161,39 +136,58 @@ class Sorter:
             self.date_of_image = None
 
     def get_new_img_path(self) -> None:
+        """
+        Calculate the new image path using the sorting way chose by the user
+        and put it in self.new_img_path
+        """
         # if the date wasn't found
         if self.date_of_image is None:
-            self.new_img_path = self.new_img_directory.joinpath(pathlib.Path("/Inclassable"))
-            print(self.new_img_path.absolute())
+            # TODO: add a option to let the user choose the name of that directory
+            self.new_img_path = self.new_img_directory.joinpath(pathlib.Path("/Unclassifiable"))
             return
 
-        sorting_array: list[str] = self.sorting_manner.split("+")
+        sorting_array: list[str] = self.sorting_manner.split("+")  # list of the different component of the sorting way
         tmp_str: str = ""  # used to store the temporary directory name
 
+        # used for simplicity of code (iterating through each key, which is not possible with datetime object
+        # TODO: maybe add hours and minutes or more ?
         date: dict = {
             "year": self.date_of_image.year,
             "month": self.date_of_image.month,
             "day": self.date_of_image.day
         }
-        self.new_img_path = self.new_img_directory
+        self.new_img_path = self.new_img_directory  # set the beginning of the new image path
 
+        # iterate through each component of the sorting way
         for string in sorting_array:
+            # if user wants a new folder
             if string.strip() == "s":
                 self.new_img_path = self.new_img_path.joinpath(tmp_str)
                 tmp_str = ""
                 continue
+            # is user wants to put a key date
             if string.strip() in list(date.keys()):
                 tmp_str += str(date[string.strip()])
+            # else, any other characters are put directly in the path
             else:
                 tmp_str += string
         self.new_img_path = self.new_img_path.joinpath(tmp_str)
 
     def set_sorting_path(self, path: pathlib.Path) -> None:
+        """
+        Set the path of the original directory to the parameter path
+
+        :param path: New path of the original directory
+        """
         self.original_img_directory = path
         self.new_img_directory = path
 
     def get_img_number(self) -> int:
-        num: int = 0
+        """
+        :return: number of images int the original directory
+        """
+        num: int = 0  # number of images detected
+
         for file in self.original_img_directory.iterdir():
             # check if it's an image
             for extension in self.accepted_img_extensions:
@@ -203,5 +197,8 @@ class Sorter:
         return num
 
     def calculate_progress(self):
+        """
+        Calculate the progress of the sorting and updates the progress bar on the ui
+        """
         progress: float = self.img_counter / self.img_number
         self.app.set_progress_bar(progress)
