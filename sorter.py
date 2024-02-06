@@ -2,7 +2,7 @@ import os  # used to remove files
 
 import pathlib  # used to manage paths
 import shutil  # used to move files
-from datetime import datetime
+from datetime import datetime  # used to store date data
 
 import PIL.Image  # used to get metadata
 
@@ -48,24 +48,25 @@ class Sorter:
 
     def get_program_name(self) -> None:
         """
-        The get_program_name function takes the program_path and removes any trailing slash, then returns the basename of
+        The get_program_name method takes the program_path and removes any trailing slash, then returns the basename of
         the path to set self.program_name to the name of the program ex: "sorter.py"
-
-        :return: Nothing
         """
         self.program_name = self.program_path
         self.program_name = os.path.normpath(self.program_name)  # removes any trailing slash
         self.program_name = os.path.basename(self.program_name)  # get everything after the last slash
 
     def run(self) -> None:
+        """
+        The run method gathers the other methods to sort all the images in the directory
+        """
         self.img_number = self.get_img_number()
         for file in self.original_img_directory.iterdir():
             # check if it's an image
             for extension in self.accepted_img_extensions:
                 if str(file).lower().endswith(extension):  # .lower() is used since some files are .JPG instead of .jpg
-                    self.img_counter += 1
+                    self.img_counter += 1  # update the number of images processed
                     self.current_img_path = file
-                    self.get_img_metadata()
+                    self.get_img_metadata()  # get the date of the image
                     self.get_new_img_path()
                     self.moving()
                     self.calculate_progress()
@@ -78,24 +79,24 @@ class Sorter:
     @staticmethod
     def mkdir(path_to_create: pathlib.Path) -> None:
         """
-        The mkdir function creates a directory.
+        The mkdir method creates a directory.
         Any non-existent parent folders will be created
 
-        :param: path_to_create The path that will be created
+        :param path_to_create: The path that will be created
         """
         path_to_create.mkdir(parents=True, exist_ok=True)
 
     def delete_image(self) -> None:
         """
-        The delete function removes the specified image from the directory.
+        The delete method removes the specified image from the directory.
         """
         os.remove(self.current_img_path)
 
     def moving(self) -> None:
         """
-        The moving function moves a file to a new location.
+        The moving method moves a file to a new location.
         It takes two arguments: the file to move and the path where it will be moved.
-        The function creates any necessary directories in order for the file to be moved there using another function.
+        This method creates any necessary directories in order for the file to be moved there using another method.
         """
         self.mkdir(self.new_img_path)
         try:
@@ -131,6 +132,9 @@ class Sorter:
                 year=int(date_list[0]),
                 month=int(date_list[1]),
                 day=int(date_list[2][:2]),
+                hour=int(date_list[2][3:]),
+                minute=int(date_list[3]),
+                second=int(date_list[4])
             )
         else:
             self.date_of_image = None

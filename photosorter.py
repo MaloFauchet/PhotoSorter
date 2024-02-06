@@ -1,17 +1,16 @@
 # used to do the actual sorting
-import pathlib
 
-from sorter import Sorter
-
-# used for gui
-import customtkinter as cs
-from tkinter import filedialog
-
-# used to get program path
+# used to get the program path
 import pathlib
 
 # used to begin the sorting
 import threading
+from tkinter import filedialog
+
+# used for gui
+import customtkinter as cs
+
+from sorter import Sorter
 
 
 class Photosorter(cs.CTk):
@@ -27,7 +26,7 @@ class Photosorter(cs.CTk):
         # customTkinter variables
         # Labels
         self.title_label: cs.CTkLabel = cs.CTkLabel(self)
-        self.explaination_label: cs.CTkLabel = cs.CTkLabel(self)
+        self.explanation_label: cs.CTkLabel = cs.CTkLabel(self)
         self.sort_label: cs.CTkLabel = cs.CTkLabel(self)
         self.help_sort_label: cs.CTkLabel = cs.CTkLabel(self)
         self.warning_label: cs.CTkLabel = cs.CTkLabel(self)
@@ -69,13 +68,13 @@ class Photosorter(cs.CTk):
         )
         self.title_label.grid(row=0, column=0, sticky="ew")
 
-        # explaination of the entry below it (old_img_dir)
-        self.explaination_label = cs.CTkLabel(
+        # explanation of the entry below it (old_img_dir)
+        self.explanation_label = cs.CTkLabel(
             self,
             text="Put here the path to you images",
             font=("Arial", 15, 'bold'),
         )
-        self.explaination_label.grid(row=1, column=0)
+        self.explanation_label.grid(row=1, column=0)
 
         # manual entry of the directory containing the images
         self.old_img_dir_entry = cs.CTkEntry(
@@ -118,7 +117,7 @@ class Photosorter(cs.CTk):
         self.sort_entry = cs.CTkEntry(self, width=350)
         self.sort_entry.grid(row=7, column=0)
 
-        # tripath button
+        # sort where specified button
         self.launch_sort_specific_path = cs.CTkButton(
             self,
             text="Start sorting at specified path",
@@ -126,7 +125,7 @@ class Photosorter(cs.CTk):
         )
         self.launch_sort_specific_path.grid(row=8, column=0)
 
-        # tri button
+        # sort where program is button
         self.launch_sort_btn = cs.CTkButton(
             self,
             text="Start sorting where the program is",
@@ -169,7 +168,7 @@ class Photosorter(cs.CTk):
         """
         self.warning_label = cs.CTkLabel(
             self,
-            text="Warning, please enter a valid path to your images.\nIf you want to start the sorting where the program is, click the other button.",
+            text="Warning, please enter a valid path to your images.\nIf the path do exists, no images were found.",
             font=("Arial", 15),
         )
         self.warning_label.grid(row=10, column=0, pady=20)
@@ -186,15 +185,20 @@ class Photosorter(cs.CTk):
             if not path.exists():
                 self.warning()
                 return
-            sorter: Sorter = Sorter(self)
-            sorter.set_sorting_path(path)
-            sorting_thread: threading.Thread = threading.Thread(target=sorter.run)
-            sorting_thread.start()
-            if sorter.img_number != 0:
-                self.progress_bar = cs.CTkProgressBar(self)
-                self.progress_bar.grid(row=11, pady=20)
-            else:
-                self.warning()
+        else:
+            path: pathlib.Path = pathlib.Path("./")
+
+        sorter: Sorter = Sorter(self)
+        sorter.set_sorting_path(path)
+
+        sorting_thread: threading.Thread = threading.Thread(target=sorter.run)
+        sorting_thread.start()
+
+        if sorter.img_number != 0:
+            self.progress_bar = cs.CTkProgressBar(self)
+            self.progress_bar.grid(row=11, pady=20)
+        else:
+            self.warning()
 
     def set_progress_bar(self, progress: float):
         self.progress_bar.set(progress)
