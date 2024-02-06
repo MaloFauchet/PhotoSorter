@@ -2,13 +2,15 @@ import os  # used to remove files
 
 import pathlib  # used to manage paths
 import shutil  # used to move files
+import threading
 from datetime import datetime
 
 import PIL.Image  # used to get metadata
 
 
 class Sorter:
-    def __init__(self):
+    def __init__(self, app):
+        self.app = app
         # Initialisation of the variables
         self.accepted_img_extensions: tuple = (".png", ".jpg", ".jpeg", ".raw", ".gif", ".jpe", ".jif", ".jfif")
 
@@ -24,22 +26,28 @@ class Sorter:
         self.get_program_name()
 
         # Directory that contains the images to sort. Default = where the program is
-        self.original_img_directory: pathlib.Path = self.get_directory("Where are the images to sort ? ")
+        # self.original_img_directory: pathlib.Path = self.get_directory("Where are the images to sort ? ")
+        self.original_img_directory: pathlib.Path = pathlib.Path("./")
         # Directory that will contain the sorted images. Default = where the program is
-        self.new_img_directory: pathlib.Path = self.get_directory(
-            "Where do you want the program to put the sorted images ?", False)
+        # self.new_img_directory: pathlib.Path = self.get_directory(
+        #     "Where do you want the program to put the sorted images ?", False)
+        self.new_img_directory: pathlib.Path = pathlib.Path("./")
         if self.new_img_path == pathlib.Path(""):
             self.new_img_directory = self.original_img_directory
         # way of sorting photos
         # TODO: change its name to more clear one
-        self.sorting_manner: str = input("How would you like to sort the photos ? ")
+        # self.sorting_manner: str = input("How would you like to sort the photos ? ")
+        self.sorting_manner: str = ''
         # if none is given, this is the default way
         if self.sorting_manner == '':
             self.sorting_manner = "year+s+year+_+month+_+day"
 
-        self.run()
+        self.img_counter: int = 0  # counts the number of sorted images
+        self.img_number: int = 0  # number of images to sort
 
-    def get_program_name(self):
+        # self.run()
+
+    def get_program_name(self) -> None:
         """
         The get_program_name function takes the program_path and removes any trailing slash, then returns the basename of
         the path to set self.program_name to the name of the program ex: "sorter.py"
@@ -50,34 +58,34 @@ class Sorter:
         self.program_name = os.path.normpath(self.program_name)  # removes any trailing slash
         self.program_name = os.path.basename(self.program_name)  # get everything after the last slash
 
-    def run(self):
-        img_counter: int = 0
+    def run(self) -> None:
+        self.img_number = self.get_img_number()
         for file in self.original_img_directory.iterdir():
             # check if it's an image
             for extension in self.accepted_img_extensions:
                 if str(file).lower().endswith(extension):  # .lower() is used since some files are .JPG instead of .jpg
-                    img_counter += 1
+                    self.img_counter += 1
                     self.current_img_path = file
                     self.get_img_metadata()
                     self.get_new_img_path()
                     self.moving()
+                    self.calculate_progress()
 
         # if there wasn't any image
-        if not img_counter:
+        if not self.img_counter:
             print("\nERROR, the first given path does not contain any image.")
 
     @staticmethod
-    def mkdir(path_to_create: pathlib.Path):
+    def mkdir(path_to_create: pathlib.Path) -> None:
         """
         The mkdir function creates a directory.
         Any non-existent parent folders will be created
 
         :param: path_to_create The path that will be created
-        :return: Nothing
         """
         path_to_create.mkdir(parents=True, exist_ok=True)
 
-    def delete_image(self):
+    def delete_image(self) -> None:
         """
         The delete function removes the specified image from the directory.
 
@@ -85,7 +93,7 @@ class Sorter:
         """
         os.remove(self.current_img_path)
 
-    def moving(self):
+    def moving(self) -> None:
         """
         The moving function moves a file to a new location.
         It takes two arguments: the file to move and the path where it will be moved.
@@ -99,7 +107,7 @@ class Sorter:
         except shutil.Error:  # delete the file if it already exists where you want to move it
             self.delete_image()
 
-    def get_directory(self, input_str: str, need_to_exist: bool = True):
+    def get_directory(self, input_str: str, need_to_exist: bool = True) -> pathlib.Path:
         """
         The get_directory function asks the user for a directory path to where the images are located.
         If the user didn't specify any path, the path of the program is used
@@ -124,11 +132,11 @@ class Sorter:
 
         return result_to_return
 
-    def get_img_metadata(self):
+    def get_img_metadata(self) -> None:
         current_image: PIL.Image = PIL.Image.open(self.current_img_path)
         current_image_metadata: PIL.Image.Exif = current_image.getexif()
 
-        date: str
+        date: str | None
         date_list: list[str]
 
         # trying different values known to contain the date of the photo
@@ -152,17 +160,17 @@ class Sorter:
         else:
             self.date_of_image = None
 
-    def get_new_img_path(self):
+    def get_new_img_path(self) -> None:
         # if the date wasn't found
         if self.date_of_image is None:
             self.new_img_path = self.new_img_directory.joinpath(pathlib.Path("/Inclassable"))
             print(self.new_img_path.absolute())
             return
 
-        sorting_array: list = self.sorting_manner.split("+")
+        sorting_array: list[str] = self.sorting_manner.split("+")
         tmp_str: str = ""  # used to store the temporary directory name
 
-        date = {
+        date: dict = {
             "year": self.date_of_image.year,
             "month": self.date_of_image.month,
             "day": self.date_of_image.day
@@ -179,3 +187,21 @@ class Sorter:
             else:
                 tmp_str += string
         self.new_img_path = self.new_img_path.joinpath(tmp_str)
+
+    def set_sorting_path(self, path: pathlib.Path) -> None:
+        self.original_img_directory = path
+        self.new_img_directory = path
+
+    def get_img_number(self) -> int:
+        num: int = 0
+        for file in self.original_img_directory.iterdir():
+            # check if it's an image
+            for extension in self.accepted_img_extensions:
+                if str(file).lower().endswith(extension):  # .lower() is used since some files are .JPG instead of .jpg
+                    num += 1
+                    break
+        return num
+
+    def calculate_progress(self):
+        progress: float = self.img_counter / self.img_number
+        self.app.set_progress_bar(progress)

@@ -1,9 +1,17 @@
 # used to do the actual sorting
+import pathlib
+
 from sorter import Sorter
 
 # used for gui
 import customtkinter as cs
 from tkinter import filedialog
+
+# used to get program path
+import pathlib
+
+# used to begin the sorting
+import threading
 
 
 class Photosorter(cs.CTk):
@@ -31,14 +39,20 @@ class Photosorter(cs.CTk):
         # Buttons
         self.old_img_dir_btn: cs.CTkButton = cs.CTkButton(self)
         self.sort_help_button: cs.CTkButton = cs.CTkButton(self)
+        self.launch_sort_specific_path: cs.CTkButton = cs.CTkButton(self)
+        self.launch_sort_btn: cs.CTkButton = cs.CTkButton(self)
+
+        # Progress Bar
+        self.progress_bar = cs.CTkProgressBar(self)
 
         # Algo variables
-        self.help_is_displayed = False
+        self.help_is_displayed: bool = False
+        self.warning_is_displayed: bool = False
 
         # draw(?) the main window
         self.main_window()
 
-    def main_window(self):
+    def main_window(self) -> None:
         """Initiates the main labels, buttons and buttons of the window"""
         # configure the grid
         for i in range(10):
@@ -60,7 +74,6 @@ class Photosorter(cs.CTk):
             self,
             text="Put here the path to you images",
             font=("Arial", 15, 'bold'),
-            height=2
         )
         self.explaination_label.grid(row=1, column=0)
 
@@ -70,6 +83,7 @@ class Photosorter(cs.CTk):
             width=400
         )
         self.old_img_dir_entry.grid(row=2, column=0)
+        self.old_img_dir_entry.focus()
 
         # pop up explorer to choose the dir containing the images
         self.old_img_dir_btn = cs.CTkButton(
@@ -83,8 +97,8 @@ class Photosorter(cs.CTk):
         # label which explains what the next entry is for
         self.sort_label = cs.CTkLabel(
             self,
-            text="Indicater here how the program will sort you photos"
-                 "\n( Default: \"year+s+year+_+month+_+day\" )",
+            text="Indicate here how the program will sort you photos"
+                 "\n( Default: year+s+year+_+month+_+day )",
             font=('Arial', 15)
         )
         self.sort_label.grid(row=4, column=0)
@@ -105,20 +119,22 @@ class Photosorter(cs.CTk):
         self.sort_entry.grid(row=7, column=0)
 
         # tripath button
-        self.launchpath = cs.CTkButton(
+        self.launch_sort_specific_path = cs.CTkButton(
             self,
             text="Start sorting at specified path",
+            command=lambda: self.launch_sort(True)
         )
-        self.launchpath.grid(row=8, column=0)
+        self.launch_sort_specific_path.grid(row=8, column=0)
 
         # tri button
-        self.launch = cs.CTkButton(
+        self.launch_sort_btn = cs.CTkButton(
             self,
-            text="Start sorting where the program is"
+            text="Start sorting where the program is",
+            command=lambda: self.launch_sort(False)
         )
-        self.launch.grid(row=9, column=0)
+        self.launch_sort_btn.grid(row=9, column=0)
 
-    def choose_dir(self):
+    def choose_dir(self) -> None:
         """
         Allows the user to choose the directory of the images to sort
         through a Windows Explorer window
@@ -128,7 +144,7 @@ class Photosorter(cs.CTk):
         tmp.set(path)
         self.old_img_dir_entry.configure(textvariable=tmp)
 
-    def help_sort_label_display(self):
+    def help_sort_label_display(self) -> None:
         """Display or destroy the help label"""
         if not self.help_is_displayed:
             self.rowconfigure(5, weight=1)
@@ -146,7 +162,7 @@ class Photosorter(cs.CTk):
             self.rowconfigure(5, weight=0)
             self.help_is_displayed = False
 
-    def warning(self):
+    def warning(self) -> None:
         """
         The warning function is a function called when the user does not enter a path to the photos.
         It displays an error message and asks him to enter a path or click on another button.
@@ -154,9 +170,31 @@ class Photosorter(cs.CTk):
         self.warning_label = cs.CTkLabel(
             self,
             text="Warning, please enter a valid path to your images.\nIf you want to start the sorting where the program is, click the other button.",
-            font=("Arial", 10),
+            font=("Arial", 15),
         )
-        self.warning_label.grid(row=10, column=0)
+        self.warning_label.grid(row=10, column=0, pady=20)
+        self.warning_is_displayed = True
+
+    def launch_sort(self, specific_path: bool) -> None:
+        """
+        Launch sort
+
+        :param specific_path: True if a path is specified, False if the user wants to use the program path
+        """
+        if specific_path:
+            path: pathlib.Path = pathlib.Path(self.old_img_dir_entry.get())
+            if not path.exists():
+                self.warning()
+                return
+            sorter = Sorter(self)
+            sorter.set_sorting_path(path)
+            sorting_thread = threading.Thread(target=sorter.run)
+            sorting_thread.start()
+            self.progress_bar = cs.CTkProgressBar(self)
+            self.progress_bar.grid(row=11, pady=20)
+
+    def set_progress_bar(self, progress: float):
+        self.progress_bar.set(progress)
 
 
 if __name__ == '__main__':
